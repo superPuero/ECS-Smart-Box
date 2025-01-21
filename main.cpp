@@ -7,7 +7,7 @@ struct Transform {
 	int x;
 	int y;
 
-	//Requires public constructor
+	//Requires atleast default constructor
 	Transform(int o, int t) noexcept {
 		x = o;
 		y = t;
