@@ -13,10 +13,87 @@
 #endif DEBUG
 
 namespace ctx {
+	class SmartBox {
+	public:
+		using deleter_func_ty = void(*)(void*);
+
+		SmartBox(const SmartBox&) = delete;
+		SmartBox& operator=(const SmartBox&) = delete;
+
+		SmartBox() : data(nullptr), deleter(nullptr){}
+
+		template<typename T, typename...Args>
+		inline static SmartBox create(Args&&...args) {
+			void* ptr = new T(std::forward<Args>(args)...);
+
+			deleter_func_ty deleter_func = [](void* data_ptr) {
+				delete reinterpret_cast<T*>(data_ptr);
+			};
+
+			return SmartBox(ptr, deleter_func);
+		}
+
+		template<typename T>
+		inline static SmartBox create(T&& arg) {
+			void* ptr = new T(std::forward<T>(arg));
+
+			deleter_func_ty deleter_func = [](void* data_ptr) {
+				delete reinterpret_cast<T*>(data_ptr);
+			};
+
+			return SmartBox(ptr, deleter_func);
+		}
+
+		inline SmartBox(SmartBox&& other) noexcept : data(other.data), deleter(other.deleter) {
+			data = other.data;
+			deleter = other.deleter;
+			other.data = nullptr;
+		}
+
+
+		inline SmartBox& operator=(SmartBox&& other) noexcept {
+			if (this != &other) {
+				try_destroy();
+				data = other.data;
+				deleter = other.deleter;
+				other.data = nullptr;
+			}
+			return *this;
+		}
+
+		inline ~SmartBox() noexcept {
+			try_destroy();
+			deleter = nullptr;
+			data = nullptr;
+		}
+
+	public:
+		void* get() {
+			return data;
+		}
+
+		deleter_func_ty get_deleter() {
+			return deleter;
+		}
+
+		inline void try_destroy() noexcept {
+			if (data) {
+				deleter(data);
+				data = nullptr;
+			}
+		}
+
+	private:
+		inline SmartBox(void* data_ptr, deleter_func_ty deleter_func) : data(data_ptr), deleter(deleter_func) {}
+
+	private:
+		void* data;
+		deleter_func_ty deleter;
+	};
 
 	using EntityId = uint64_t;
 	using ComponentId = std::type_index;
-	using ComponentData = void*;
+	using ComponentData = SmartBox;
 
 	class Registry {
 	public:
@@ -43,10 +120,10 @@ namespace ctx {
 
 			ctx_assert(valid(entity_id), "invalid entity");
 
-			m_data[entity_id][component_id] = new T(std::forward<T>(arg));
+			m_data[entity_id][component_id] = std::move(SmartBox::create<T>(std::forward<T>(arg)));
 			m_valids[component_id].insert(entity_id);
 			
-			return *reinterpret_cast<T*>(m_data[entity_id][component_id]);
+			return *reinterpret_cast<T*>(m_data[entity_id][component_id].get());
 		}
 
 		template<typename T, typename...Args>
@@ -56,10 +133,10 @@ namespace ctx {
 
 			ctx_assert(valid(entity_id), "invalid entity");
 
-			m_data[entity_id][component_id] = new T(std::forward<Args>(args)...);
+			m_data[entity_id][component_id] = SmartBox::create<T>(std::forward<Args>(args)...);
 			m_valids[component_id].insert(entity_id);
 
-			return *reinterpret_cast<T*>(m_data[entity_id][component_id]);
+			return *reinterpret_cast<T*>(m_data[entity_id][component_id].get());
 		}
 
 		template<typename T>
@@ -70,7 +147,7 @@ namespace ctx {
 			ctx_assert(valid(entity_id), "invalid entity");
 			ctx_assert(valid(entity_id, component_id), "invalid component");
 
-			return *reinterpret_cast<T*>(m_data[entity_id][component_id]);
+			return *reinterpret_cast<T*>(m_data[entity_id][component_id].get());
 		}
 
 	private:
