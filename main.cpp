@@ -2,11 +2,13 @@
 #include <iostream>
 
 
-//basic component
+//basic component exmple
 struct Transform {
 	int x;
 	int y;
 
+	// destructor is not required, but if there is any, it will be called on component removing or entity destructng properly
+	// with that said, component may have internal heap allocations, such as malloc(), just make sure to write proper deallocation logic in component destructor
 	inline ~Transform(){
 		std::cout << "Transform destructed" << '\n';
 	}
