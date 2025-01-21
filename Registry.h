@@ -18,7 +18,6 @@ namespace ctx {
 	using ComponentId = std::type_index;
 	using ComponentData = void*;
 
-
 	class Registry {
 	public:
 		static Registry create()

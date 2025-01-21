@@ -1,6 +1,7 @@
 #include "Registry.h"		
 #include <iostream>
 #include <variant>
+#include <array>
 
 struct Transform {
 	float x;
@@ -71,22 +72,7 @@ private:
 	deleter_func_ty deleter;
 };
 
-
-struct Dat {
-	Dat(int num) noexcept {
-		n = num;
-	}
-	~Dat() {
-		std::cout << "killed dat " << "\n";
-	}
-
-	int n;
-};
-
 int main() {												   
 	using namespace ctx;
 
-	auto foo = Foo::create<Dat>(4);
-
-	std::cout << "end" << '\n';
 }
