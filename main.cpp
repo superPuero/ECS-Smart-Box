@@ -39,7 +39,7 @@ int main() {
 
 	auto& tr1 = reg.emplace<Transform>(e1, 13, 54 ); //inplace constructing directly inside registry, better for performance
 	auto& tr2 = reg.add(e2, Transform{ 98, 34 }); //inplace construct inside function and tham move of constructed object, slightly worse for performance
-	auto& num = reg.emplace<int>(e2, 98); //copying and tham move of constructed object, slightly worse for performance
+	auto& num = reg.emplace<int>(e2, 98);
 
 	reg.remove<int>(e2);  //removing single component
 
