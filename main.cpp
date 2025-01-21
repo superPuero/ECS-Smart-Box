@@ -43,7 +43,7 @@ int main() {
 
 	reg.remove<int>(e2);  // removing single component
 
-	reg.destroy(e2); // removeing every component assosiated with e1 
+	reg.destroy(e2); // destroying whole e2 entity with every assosiated component
 
 	std::cout << tr1.x << " " << tr1.y << '\n'; 
 	std::cout << tr2.x << " " << tr2.y << '\n';	// undefined
