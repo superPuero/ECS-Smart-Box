@@ -29,7 +29,6 @@ namespace ctx {
 			deleter_func_ty deleter_func = [](void* data_ptr) {
 				delete reinterpret_cast<T*>(data_ptr);
 			};
-			std::cout << "not" << '\n';
 			return SmartBox(ptr, deleter_func);
 		}
 
