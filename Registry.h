@@ -45,8 +45,6 @@ namespace ctx {
 		}
 
 		inline SmartBox(SmartBox&& other) noexcept : data(other.data), deleter(other.deleter) {
-			data = other.data;
-			deleter = other.deleter;
 			other.data = nullptr;
 		}
 
@@ -120,7 +118,8 @@ namespace ctx {
 
 			ctx_assert(valid(entity_id), "invalid entity");
 
-			m_data[entity_id][component_id] = std::move(SmartBox::create<T>(std::forward<T>(arg)));
+			m_data[entity_id].emplace(component_id, SmartBox::create<T>(std::forward<T>(arg)));
+			m_pool[entity_id].insert(component_id);
 			m_valids[component_id].insert(entity_id);
 			
 			return *reinterpret_cast<T*>(m_data[entity_id][component_id].get());
@@ -133,7 +132,8 @@ namespace ctx {
 
 			ctx_assert(valid(entity_id), "invalid entity");
 
-			m_data[entity_id][component_id] = SmartBox::create<T>(std::forward<Args>(args)...);
+			m_data[entity_id].emplace(component_id, SmartBox::create<T>(std::forward<Args>(args)...));
+			m_pool[entity_id].insert(component_id);
 			m_valids[component_id].insert(entity_id);
 
 			return *reinterpret_cast<T*>(m_data[entity_id][component_id].get());
@@ -148,6 +148,31 @@ namespace ctx {
 			ctx_assert(valid(entity_id, component_id), "invalid component");
 
 			return *reinterpret_cast<T*>(m_data[entity_id][component_id].get());
+		}
+
+		template<typename T>
+		inline void remove(EntityId entity_id)
+		{
+			ComponentId component_id = typeid(T);
+
+			ctx_assert(valid(entity_id), "invalid entity");
+			ctx_assert(valid(entity_id, component_id), "invalid component");
+
+			m_valids[component_id].erase(entity_id);
+		}
+
+		inline void destroy(EntityId entity_id) 
+		{
+			ctx_assert(valid(entity_id), "invalid entity");
+			m_data.erase(entity_id);
+			for (ComponentId component_id : m_pool [entity_id] ) {
+				m_valids[component_id].erase(entity_id);
+			}
+			m_pool.erase(entity_id);
+		}
+
+		inline uint64_t count() {
+			return m_pool.size();
 		}
 
 	private:
@@ -170,6 +195,7 @@ namespace ctx {
 		std::unordered_map<EntityId, std::unordered_map<ComponentId, ComponentData>> m_data;
 		std::unordered_map<EntityId, std::unordered_set<ComponentId>> m_pool;
 		std::unordered_map<ComponentId, std::unordered_set<EntityId>> m_valids;
+		
 	private:
 		EntityId m_counter;
 	};
