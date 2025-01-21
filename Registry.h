@@ -3,7 +3,7 @@
 #include <unordered_set>
 #include <typeindex>
 #include <iostream>
-//#include <new>
+
 #define DEBUG
 
 #ifdef DEBUG
@@ -29,18 +29,7 @@ namespace ctx {
 			deleter_func_ty deleter_func = [](void* data_ptr) {
 				delete reinterpret_cast<T*>(data_ptr);
 			};
-
-			return SmartBox(ptr, deleter_func);
-		}
-
-		template<typename T>
-		inline static SmartBox create(T&& arg) {
-			void* ptr = new T(std::forward<T>(arg));
-
-			deleter_func_ty deleter_func = [](void* data_ptr) {
-				delete reinterpret_cast<T*>(data_ptr);
-			};
-
+			std::cout << "not" << '\n';
 			return SmartBox(ptr, deleter_func);
 		}
 

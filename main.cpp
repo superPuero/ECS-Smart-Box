@@ -26,13 +26,9 @@ int main() {
 	auto& tr2 = reg.add(e2, Transform{ 98, 34 }); //copying and tham move of constructed object, slightly worse for performance
 	auto& num = reg.emplace<int>(e2, 98); //copying and tham move of constructed object, slightly worse for performance
 
-	std::cout << "foo\n";
-
 	reg.remove<int>(e2);  //removing single component
 
-	reg.destroy(e1); //removeing every component assosiated with e1 
-
-	std::cout << "foo\n";
+	//reg.destroy(e1); //removeing every component assosiated with e1 
 
 	std::cout << tr1.x << " " << tr1.y << '\n'; //Undefined
 	std::cout << tr2.x << " " << tr2.y << '\n';
