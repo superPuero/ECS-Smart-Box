@@ -22,6 +22,8 @@ struct Transform {
 	// does not reqire copy constructor
 	Transform(const Transform& other) = delete;
 
+
+	// basic << overload for std::cout
 	friend std::ostream& operator<<(std::ostream& os, const Transform& tr) {
 		os << "x: " << tr.x << " y: " << tr.y;
 		return os;
