@@ -3,12 +3,14 @@
 #include <unordered_set>
 #include <typeindex>
 #include <iostream>
+#include <algorithm>
+#include <execution>
 
 #define DEBUG
 
 #ifdef DEBUG
-	#define ctx_assert(expr, msg) if (!expr){std::cout << msg, __debugbreak();}
-#elif // DEBUG
+	#define ctx_assert(expr, msg) if (!expr){std::cout << msg << " on line " << __LINE__, __debugbreak();}
+#else 
 	#define ctx_assert(expr, msg)
 #endif DEBUG
 
@@ -88,7 +90,9 @@ namespace ctx {
 			return Registry();
 		}
 		
-		EntityId entity() 
+		~Registry() noexcept {}
+
+		EntityId entity() noexcept
 		{
 			EntityId new_id = m_counter;
 			m_counter++;
@@ -128,7 +132,7 @@ namespace ctx {
 		}
 
 		template<typename T>
-		inline T& get(EntityId entity_id) 
+		inline T& get(EntityId entity_id) noexcept
 		{
 			ComponentId component_id = typeid(T);
 
@@ -153,21 +157,76 @@ namespace ctx {
 		{
 			ctx_assert(valid(entity_id), "invalid entity");
 			m_data.erase(entity_id);
-			for (ComponentId component_id : m_pool [entity_id] ) {
+			for (ComponentId component_id : m_pool[entity_id] ) {
 				m_valids[component_id].erase(entity_id);
 			}
 			m_pool.erase(entity_id);
+		}
+
+		template<typename...Args>
+		inline std::unordered_set<EntityId> group() noexcept
+		{
+			constexpr size_t components_count = sizeof...(Args);
+
+			ComponentId component_ids[components_count] = { typeid(Args)... };
+
+			std::unordered_set<EntityId> current_group = m_valids[component_ids[0]];
+			std::unordered_set<EntityId> compare_group;
+
+			for (ComponentId component_id : component_ids) {
+				for (EntityId entity_id : m_valids[component_id]) {
+					if (current_group.contains(entity_id)) {
+						compare_group.insert(entity_id);
+					}
+				}
+				std::swap(current_group, compare_group);
+				if (current_group.empty()) {
+					break;
+				}
+				compare_group.clear();
+			}
+
+			return current_group;
+		}
+
+		template<typename...Args>
+		inline std::vector<std::tuple<Args&...>> query()
+		{
+			auto commons = group<Args...>();
+
+			std::vector<std::tuple<Args&...>>  query;
+
+			for (EntityId entity_id : commons) {
+				query.push_back({ get<Args>(entity_id)... });
+			}
+
+			return query;
+		}
+
+		template<typename...Args, typename Fn>
+		void transform(Fn task)
+		{
+			static_assert(std::is_convertible_v<Fn, void(*)(std::tuple<Args&...>&)>,
+				"Only non-capturing lambdas are allowed");
+
+			std::vector<std::tuple<Args&...>> view = query<Args...>();
+			std::for_each(std::execution::par_unseq, view.begin(), view.end(), task);
+		}
+
+		template<typename...Args, typename Fn>
+		void task(Fn task)
+		{
+			std::unordered_set<EntityId> view = group<Args...>();
+			std::for_each(std::execution::unseq, view.begin(), view.end(), task);
 		}
 
 		inline uint64_t count() {
 			return m_pool.size();
 		}
 
-	private:
-		Registry()
-		{
-			m_counter = 1;			
-		}
+	private:	 
+
+		Registry() : m_counter(1){}
 
 		inline bool valid(EntityId entity_id) 
 		{
@@ -178,12 +237,13 @@ namespace ctx {
 		{
 			return m_pool.contains(entity_id) && m_valids[component_id].contains(entity_id);
 		}
-
+		
 	private:
 		std::unordered_map<EntityId, std::unordered_map<ComponentId, ComponentData>> m_data;
 		std::unordered_map<EntityId, std::unordered_set<ComponentId>> m_pool;
 		std::unordered_map<ComponentId, std::unordered_set<EntityId>> m_valids;
 		
+
 	private:
 		EntityId m_counter;
 	};
